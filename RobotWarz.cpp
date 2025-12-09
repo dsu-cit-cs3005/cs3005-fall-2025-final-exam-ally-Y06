@@ -194,6 +194,21 @@ void radar_scan(int direction, std::vector<RadarObj> *radar_results, std::vector
     }
 
 }
+int apply_damage_with_armor(RobotBase* target, int base_damage)
+{
+    int armor = target->get_armor();   
+    double reduction = armor * 0.10;   
+
+    int final_damage = static_cast<int>(base_damage * (1.0 - reduction));
+
+    if (final_damage < 0)
+        final_damage = 0;
+
+    if (armor > 0)
+        target->reduce_armor(1);
+    target->take_damage(final_damage);
+    return final_damage;
+}
 void move_robot(RobotBase* robot, int rows, int cols, std::vector<char> &board){
     int direction, distance;
     robot->get_move_direction(direction, distance);
@@ -241,8 +256,9 @@ void move_robot(RobotBase* robot, int rows, int cols, std::vector<char> &board){
         else if(cell == 'F'){
             out<<robot->m_name<<" moved into burning flames\n";
             int damage = 30 + (std::rand() % 21); 
-            out<<"They take "<<damage<<" damage.\n";
-            robot->take_damage(damage);
+            int dmg = apply_damage_with_armor(robot, damage);
+            out<<"They take "<<dmg<<" damage.\n";
+            
             r = new_r;
             c = new_c;
             board[r *cols + c] = '.';//the flames are absorbed and gone
@@ -263,6 +279,7 @@ void move_robot(RobotBase* robot, int rows, int cols, std::vector<char> &board){
     robot->move_to(r, c);
 
 }
+
 void fire_railgun(RobotBase* robot, int rows, int cols, std::vector<char>& board, int r_shoot, int c_shoot, std::vector<RobotBase*> robots)
 {
     int r, c;
@@ -296,8 +313,7 @@ void fire_railgun(RobotBase* robot, int rows, int cols, std::vector<char>& board
 
         if (cell != '.' && cell != 'M' && cell != 'P' && cell != 'F' && cell != 'X')
         {
-            out << robot->m_name << " shoots a robot at (" << cur_r << "," << cur_c << ") for "<< damage << " damage.\n";
-
+            
             // Find the robot and damage it
             for (RobotBase* bot : robots)  // you need this global or passed-in list
             {
@@ -306,7 +322,8 @@ void fire_railgun(RobotBase* robot, int rows, int cols, std::vector<char>& board
 
                 if (orow == cur_r && ocol == cur_c)
                 {
-                    bot->take_damage(damage);
+                    int dmg = apply_damage_with_armor(bot, damage);
+                    out << robot->m_name << " shoots a robot at (" << cur_r << "," << cur_c << ") for "<< dmg << " damage.\n";
 
                     if (bot->get_health() <= 0)
                     {
@@ -334,7 +351,7 @@ void fire_launcher(RobotBase* robot, int rows, int cols, std::vector<char>& boar
         robot->decrement_grenades();
         if (cell != '.' && cell != 'M' && cell != 'P' && cell != 'F' && cell != 'X')
         {
-            out << robot->m_name << " shoots a robot at (" << r_shoot << "," << c_shoot << ") for "<< damage << " damage.\n";
+            
 
             // Find the robot and damage it
             for (RobotBase* bot : robots)  
@@ -344,8 +361,8 @@ void fire_launcher(RobotBase* robot, int rows, int cols, std::vector<char>& boar
 
                 if (orow == r_shoot && ocol == c_shoot)
                 {
-                    bot->take_damage(damage);
-                    
+                   int dmg = apply_damage_with_armor(bot, damage);
+                   out << robot->m_name << " shoots a robot at (" << r_shoot << "," << c_shoot << ") for "<< dmg << " damage.\n";
 
                     if (bot->get_health() <= 0)
                     {
@@ -399,8 +416,7 @@ void fire_flamethrower(RobotBase* robot, int rows, int cols, std::vector<char>& 
 
             int damage = 30 + (std::rand() % 21); 
 
-            out << robot->m_name << " burns a robot at ("
-                << fr << "," << fc << ") for " << damage << " damage.\n";
+            
 
             for (RobotBase* bot : robots)
             {
@@ -409,7 +425,8 @@ void fire_flamethrower(RobotBase* robot, int rows, int cols, std::vector<char>& 
 
                 if (br == fr && bc == fc)
                 {
-                    bot->take_damage(damage);
+                   int dmg = apply_damage_with_armor(bot, damage);
+                   out << robot->m_name << " burns a robot at ("<< fr << "," << fc << ") for " << dmg << " damage.\n";
 
                     if (bot->get_health() <= 0)
                     {
@@ -446,9 +463,7 @@ void fire_hammer(RobotBase* robot, int rows, int cols, std::vector<char>& board,
 
     int damage = 50 + (std::rand() % 11); // 50–60 damage
 
-    out << robot->m_name << " hammers a robot at ("
-        << r_shoot << "," << c_shoot << ") for "
-        << damage << " damage.\n";
+   
 
     // Find that robot and apply damage
     for (RobotBase* bot : robots)
@@ -458,7 +473,8 @@ void fire_hammer(RobotBase* robot, int rows, int cols, std::vector<char>& board,
 
         if (orow == r_shoot && ocol == c_shoot)
         {
-            bot->take_damage(damage);
+            int dmg = apply_damage_with_armor(bot, damage);
+            out << robot->m_name << " hammers a robot at (" << r_shoot << "," << c_shoot << ") for "<< dmg << " damage.\n";
 
             if (bot->get_health() <= 0)
             {
