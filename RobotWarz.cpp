@@ -227,7 +227,10 @@ void move_robot(RobotBase* robot, int rows, int cols, std::vector<char> &board){
         int new_c = c + directions[direction].second;
 
         // Check bounds
-        if(new_r < 0 || new_r >= rows || new_c < 0 || new_c >= cols) break;
+        if(new_r < 0 || new_r >= rows || new_c < 0 || new_c >= cols){
+            out << robot->m_name<< " tried to go out of bound.\n";
+            break;
+        } 
 
         char cell = board[new_r * cols + new_c];
 
@@ -298,7 +301,6 @@ void fire_railgun(RobotBase* robot, int rows, int cols, std::vector<char>& board
     else if (dc < 0) step_c = -1;
     else step_c = 0;
 
-    // If both are zero: robot shot itself — do nothing
     if (step_r == 0 && step_c == 0)
         return;
 
@@ -387,7 +389,7 @@ void fire_launcher(RobotBase* robot, int rows, int cols, std::vector<char>& boar
         out<<robot->m_name<<" is out of grenades. Can't shoot.";
     }
 }
-void fire_flamethrower(RobotBase* robot, int rows, int cols, std::vector<char>& board,int r_shoot, int c_shoot, std::vector<RobotBase*> robots)
+void fire_flamethrower(RobotBase* robot, int rows, int cols, std::vector<char>& board, int r_shoot, int c_shoot, std::vector<RobotBase*> robots)
 {
     int r, c;
     robot->get_current_location(r, c);
@@ -395,37 +397,35 @@ void fire_flamethrower(RobotBase* robot, int rows, int cols, std::vector<char>& 
     int dr = r_shoot - r;
     int dc = c_shoot - c;
 
-    if (dr > 1) dr = 1;
-    if (dr < -1) dr = -1;
-    if (dc > 1) dc = 1;
-    if (dc < -1) dc = -1;
+    // Clamp to unit step direction
+    if (dr > 1) dr = 1; else if (dr < -1) dr = -1;
+    if (dc > 1) dc = 1; else if (dc < -1) dc = -1;
 
-    if (dr == 0 && dc == 0)
-        return;
-    int pr = -dc;
-    int pc = dr;
+    if (dr == 0 && dc == 0) return; // no movement
 
-    for (int step = 1; step <= 4; step++)
+    // Perpendicular vector for side coverage
+    int pr = (dc == 0) ? 1 : -dc;
+    int pc = (dr == 0) ? 1 : dr;
+
+    const int flame_range = 4;
+
+    for (int step = 1; step <= flame_range; ++step)
     {
         int base_r = r + dr * step;
         int base_c = c + dc * step;
 
-        for (int side = -1; side <= 1; side++)
+        for (int side = -1; side <= 1; ++side)
         {
             int fr = base_r + pr * side;
             int fc = base_c + pc * side;
 
-            if (fr < 0 || fr >= rows || fc < 0 || fc >= cols)
-                continue;
+            if (fr < 0 || fr >= rows || fc < 0 || fc >= cols) continue;
 
             char &cell = board[fr * cols + fc];
 
-            if (cell == '.' || cell == 'M' || cell == 'P' || cell == 'F' || cell == 'X')
-                continue;
+            if (cell == '.' || cell == 'M' || cell == 'P' || cell == 'F' || cell == 'X') continue;
 
-            int damage = 30 + (std::rand() % 21); 
-
-            
+            int damage = 30 + (std::rand() % 21); // 30–50 damage
 
             for (RobotBase* bot : robots)
             {
@@ -434,8 +434,8 @@ void fire_flamethrower(RobotBase* robot, int rows, int cols, std::vector<char>& 
 
                 if (br == fr && bc == fc)
                 {
-                   int dmg = apply_damage_with_armor(bot, damage);
-                   out << robot->m_name << " burns robot "<<bot->m_name<< " for "<< dmg << " damage.\n";
+                    int dmg = apply_damage_with_armor(bot, damage);
+                    out << robot->m_name << " burns robot " << bot->m_name << " for " << dmg << " damage.\n";
 
                     if (bot->get_health() <= 0)
                     {
@@ -443,12 +443,13 @@ void fire_flamethrower(RobotBase* robot, int rows, int cols, std::vector<char>& 
                         cell = 'X';
                         bot->m_character = 'X';
                     }
-                    break;
+                    break; // only one robot per cell
                 }
             }
         }
     }
 }
+
 
 void fire_hammer(RobotBase* robot, int rows, int cols, std::vector<char>& board, int r_shoot, int c_shoot, std::vector<RobotBase*> robots)
 {
