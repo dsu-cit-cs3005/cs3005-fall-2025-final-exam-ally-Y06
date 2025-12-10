@@ -12,8 +12,9 @@ private:
     int m_move_direction = 3;
     bool run_away;
     int radar_direction = 1; // Radar scanning direction (1-8)
-   
+    bool at_edge = false;
     const int max_range = 4; // Maximum range of the flamethrower
+    bool go_right = false;
     std::vector<RadarObj> known_obstacles; // Permanent obstacle list
 
     // Helper function to determine if a cell is an obstacle
@@ -58,9 +59,23 @@ public:
 
    virtual void get_radar_direction(int& radar_direction_out) override 
     {
-       
+       if(at_edge == true){
+            if(radar_direction == 1 || radar_direction == 2 || radar_direction == 8){
+                radar_direction = 3;
+                radar_direction_out = radar_direction;
+                return;
+            }
+            if(radar_direction == 3 ) radar_direction = 7;
+            if(radar_direction == 7) radar_direction = 5;
+            if(radar_direction == 5) radar_direction = 4;
+            if(radar_direction == 4) radar_direction = 3;
+            radar_direction_out = radar_direction;
+            return;
+
+       }
         radar_direction_out = radar_direction;
-        radar_direction = (radar_direction % 8) + 1; 
+        radar_direction = (radar_direction % 4) + 1; 
+
     }
 
 
@@ -128,12 +143,11 @@ public:
         int max_move = get_move_speed();
         if (max_move <= 0) { move_direction = 0; move_distance = 0; return; }
 
-        int dirs[4] = {7, 5, 3, 1}; 
-
         if (run_away)
         {
             int dir = m_move_direction;
             move_distance = 0;
+
             for (int step = 1; step <= max_move; ++step)
             {
                 int nr = r, nc = c;
@@ -151,42 +165,151 @@ public:
             move_direction = (move_distance > 0) ? dir : 0;
             return;
         }
-        for (int i = 0; i < 4; ++i)
+        if(r == 0 || r == 1){
+            at_edge = true;
+        }
+        else at_edge = false;
+        if (r == 0)
         {
-            int dir = dirs[i];
-            int distance = 0;
-
-            int max_step = max_move;
-            if (dir == 1) max_step = std::min(max_move, r);
-            else if (dir == 5) max_step = std::min(max_move, m_board_row_max - r);
-            else if (dir == 7) max_step = std::min(max_move, c);
-            else if (dir == 3) max_step = std::min(max_move, m_board_col_max - c);
-
-            for (int step = 1; step <= max_step; ++step)
-            {
-                int nr = r, nc = c;
-                if (dir == 1) nr -= step;
-                else if (dir == 5) nr += step;
-                else if (dir == 3) nc += step;
-                else if (dir == 7) nc -= step;
-
-                if (is_obstacle(nr, nc)) break;
-
-                distance = step;
+            if(c == 0){
+                go_right = true;
+                if(is_obstacle(r, c+1)){
+                    move_direction = 5;
+                    move_distance = 1;
+                    return;
+                }
+                if(!is_obstacle(r, c+2) && c+2 < m_board_col_max){
+                    move_direction = 3;
+                    move_distance = 2;
+                    return;
+                }
+                move_direction = 3;
+                move_distance = 1;
+                return;
             }
+            if(go_right){
+                if(is_obstacle(r, c+1)){
+                    move_direction = 5;
+                    move_distance = 1;
+                    go_right = false;
+                    return;
+                }
+                if(!is_obstacle(r, c+2) && c+2 < m_board_col_max){
+                    move_direction = 3;
+                    move_distance = 2;
+                    return;
+                }
+                move_direction = 3;
+                move_distance = 1;
+                return;
 
-            if (distance > 0)
+            }
+            if (c < m_board_col_max)
             {
-                move_direction = dir;
-                move_distance = distance;
+                
+                if(is_obstacle(r, c+1)){//both ways obstacles, go down
+                    if(is_obstacle(r, c-1)){
+                        move_direction = 5;
+                        move_distance = 1;
+                        go_right = false;
+                        return;
+                    }
+                    
+                    move_direction = 7;
+                    move_distance = 1;
+                    return;
+                }
+                if(is_obstacle(r, c-1)){
+                        move_direction = 7;
+                        move_distance = 1;
+                        return;
+                }
+                move_direction = 3; 
+                move_distance = std::min(max_move, m_board_col_max - c);
+                return;
+            }
+            else 
+            {   
+                if(is_obstacle(r, c-1)){
+                    if(is_obstacle(r, c+1)){
+                        move_direction = 5;
+                        move_distance = 1;
+                        return;
+                    }
+                    move_direction = 3;
+                    move_distance = 1;
+                    return;
+                }
+                move_direction = 7; 
+                move_distance = 1;
+                return;
+            }
+        }
+        if (c == m_board_col_max)
+        {
+            go_right= false;
+            if (r < m_board_row_max)
+            {
+                move_direction = 7; 
+                move_distance = std::min(max_move, m_board_row_max - r);
+                return;
+            }
+            else 
+            {
+                move_direction = 7; 
+                move_distance = 1;
                 return;
             }
         }
 
-        move_distance = 0;
-        move_direction = 0;
+        if (r == m_board_row_max)
+        {
+            if (c > 0)
+            {
+                move_direction = 1; 
+                move_distance = std::min(max_move, c);
+                return;
+            }
+            else 
+            {
+                move_direction = 1; 
+                move_distance = 1;
+                return;
+            }
+        }
 
+        if (c == 0)
+        {
+            if (r > 0)
+            {
+                move_direction = 1; 
+                move_distance = std::min(max_move, r);
+                return;
+            }
+            else 
+            {
+                move_direction = 3;
+                move_distance = 1;
+                return;
+            }
+        }
+        if(is_obstacle(r+1, c)) {
+            if(!is_obstacle(r, c+1) && c+1 < m_board_col_max){
+                move_direction = 3; 
+                move_distance  = 1;
+                return;
+            }
+            if(!is_obstacle(r, c-1) && c-1> 0){
+                move_direction = 7; 
+                move_distance  = 1;
+                return;
+            }
+            
+        }
+        move_direction = 1; 
+        move_distance  = std::min(max_move, r);
     }
+    
 
 };
 

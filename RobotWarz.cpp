@@ -273,7 +273,7 @@ void move_robot(RobotBase* robot, int rows, int cols, std::vector<char> &board){
     }
 
     // Update robot's location
-    out<<robot->m_name<<" is in spot ("<<r<<", "<<c<<") \n";
+    out<<robot->m_name<<" is in spot ("<<c<<", "<<r<<") \n";
     if(r != r_o || c != c_o){
         board[r *cols + c] = robot->m_character;
         board[r_o *cols + c_o] = '.';
